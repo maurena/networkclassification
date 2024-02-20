@@ -1,0 +1,32 @@
+{
+    "terminal.integrated.inheritEnv": false,
+    "python.autoComplete.extraPaths": [
+    
+        "C:\\OSGeo4W64\\apps\\Python37",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib",
+        "C:\\OSGeo4W64\\apps\\Python37\\DLLs",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages\\win32",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages\\win32\\lib",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages\\pythonwin",
+        "C:\\OSGeo4W64\\apps\\qgis\\python"
+    ],
+    "workbench.editorAssociations": {
+        "*.ipynb": "jupyter-notebook"
+    },
+    "python.analysis.extraPaths": [
+        "C:\\OSGeo4W64\\apps\\Python37",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib",
+        "C:\\OSGeo4W64\\apps\\Python37\\DLLs",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages\\win32",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages\\win32\\lib",
+        "C:\\OSGeo4W64\\apps\\Python37\\lib\\site-packages\\pythonwin",
+        "C:\\OSGeo4W64\\apps\\qgis\\python"
+    ],
+    "python.languageServer": "Pylance",
+    "notebook.cellToolbarLocation": {
+        "default": "right",
+        "jupyter-notebook": "left"
+    }
+}

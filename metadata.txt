@@ -14,7 +14,7 @@ email=rcb00029@red.ujaen.es / maurena@ujaen.es
 about=Este plugin clasifica las redes hídricas por medio de una etapa de enriquecimiento y otra de lógica difusa.
 
 tracker=http://bugs
-repository=http://repo
+repository=https://github.com/maurena/networkclassification
 # End of mandatory metadata
 
 # Recommended items:
@@ -26,7 +26,7 @@ hasProcessingProvider=no
 # Tags are comma separated with spaces allowed
 tags=python, hydrographic classification
 
-homepage=http://homepage
+homepage=https://coello.ujaen.es/investigacion/web_giic/funquality4dem/hnc
 category=Plugins
 icon=icon.png
 # experimental flag
@@ -41,7 +41,7 @@ deprecated=False
 # plugin_dependencies=
 
 Category of the plugin: Raster, Vector, Database or Web
-# category=
+# category=Raster,Vector
 
 # If the plugin can run on QGIS Server.
 server=False

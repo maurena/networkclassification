@@ -8,7 +8,7 @@ from qgis.core import Qgis, QgsTask, QgsMessageLog
 
 class baseEnrichment(QgsTask):
     # Constructor
-    def __init__(self, description, junctions, channels, debug=False):
+    def __init__(self, description, junctions, channels, saga, debug=False):
         # Data
         self.junctions = junctions
         self.channels = channels
@@ -19,7 +19,12 @@ class baseEnrichment(QgsTask):
         #Orden de Strahler del stream
         self.ORDER = "ORDER"
         #ID del nodo
-        self.NODE_ID = "NODE_ID"
+        if saga =='saga':
+            self.NODE_ID = "NODE_ID"
+        else:
+            self.NODE_ID = "ID"
+
+        print(self.NODE_ID)
         #Nodo from del stream
         self.NODE_A = "NODE_A"
         #Nodo to del stream
@@ -34,7 +39,7 @@ class baseEnrichment(QgsTask):
         self.SPRING = "Spring"
 
         #Constante que nos dice cuál es la máxima diferencia que puede haber entre
-        #dos ángulos a la hora de calcula la direcc ión de flujo para que consideremos
+        #dos ángulos a la hora de calcula la dirección de flujo para que consideremos
         #a la longitud del stream en vez de a dicha dirección.
         self.LIMITE_ANGULOS = 3
 

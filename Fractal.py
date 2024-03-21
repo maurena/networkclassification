@@ -12,9 +12,9 @@ from qgis.core import QgsRectangle, QgsPointXY
 #  s is the length of the box (equivalent to original ruler)
 #  N(s) is the number of boxes that covers the streams
 class Fractal(baseEnrichment):
-    def __init__(self, junctions, channels, debug=False):
+    def __init__(self, junctions, channels, saga, debug=False):
         # Init baseEnrichemnt
-        baseEnrichment.__init__(self, "Fractal Calculation", junctions, channels, debug)
+        baseEnrichment.__init__(self, "Fractal Calculation", junctions, channels, saga, debug)
 
         # Crear el MRE de las cuencas o de los junctions: Channels
         layer_watersheds = processing.run('qgis:minimumboundinggeometry',{'INPUT': channels, 'TYPE': 3, 'OUTPUT': 'TEMPORARY_OUTPUT'} )['OUTPUT']

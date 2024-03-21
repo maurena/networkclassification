@@ -3,8 +3,8 @@ import math as m
 from .base import baseEnrichment
 
 class Angularidad(baseEnrichment):
-    def __init__(self, junctions, channels, debug=False):
-        baseEnrichment.__init__(self, "Angularity", junctions, channels, debug)
+    def __init__(self, junctions, channels, saga, debug=False):
+        baseEnrichment.__init__(self, "Angularity", junctions, channels, saga, debug)
 
     def sortCriteria(self, p_segment):
         return p_segment[1][self.ORDER]

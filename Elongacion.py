@@ -4,8 +4,8 @@ from .base import baseEnrichment
 from qgis.core import QgsGeometry
 
 class Elongacion(baseEnrichment):
-    def __init__(self, junctions, channels, debug=False):
-        baseEnrichment.__init__(self, "Elongation", junctions, channels, debug)
+    def __init__(self, junctions, channels, saga, debug=False):
+        baseEnrichment.__init__(self, "Elongation", junctions, channels, saga, debug)
 
         #Constante que nos dice cuál es la máxima diferencia que puede haber entre
         #dos ángulos a la hora de calcula la dirección de flujo para que consideremos

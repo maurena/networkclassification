@@ -2,8 +2,8 @@ import math as m
 from .base import baseEnrichment
 
 class RatioLongitud(baseEnrichment):
-    def __init__(self, junctions, channels, debug=False):
-        baseEnrichment.__init__(self, "Length Ratio", junctions, channels, debug)
+    def __init__(self, junctions, channels, saga, debug=False):
+        baseEnrichment.__init__(self, "Length Ratio", junctions, channels, saga, debug)
 
     def sortCriteria(self, canal):
         return canal[self.ORDER]

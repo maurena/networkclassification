@@ -56,8 +56,9 @@ class ClasificacionRedes:
 
         if os.path.exists(self.locale_path):
             self.translator = QTranslator()
-            # self.translator.load(locale_path)
-            # QCoreApplication.installTranslator(self.translator)
+            locale_path = os.path.join(self.locale_path, 'ClasificacionRedes_' + locale + '.qm')
+            self.translator.load(locale_path)
+            QCoreApplication.installTranslator(self.translator)
 
         # Declare instance attributes
         self.actions = []
@@ -196,14 +197,14 @@ class ClasificacionRedes:
         # Only create GUI ONCE in callback, so that it will only load when the plugin is started
         if self.first_start == True:
             self.first_start = False
-            # Select language
-            languages = ("Espanol", "English")
-            language, ok = QtWidgets.QInputDialog.getItem(None, "Languages", "List of languages", languages, 0, False)
-            if ok and (language == "English"):
-                self.locale_path = os.path.join(self.locale_path, 'ClasificacionRedes_ingles.qm')
-                self.translator.load(self.locale_path)
-            if language != "Espanol":
-                QCoreApplication.installTranslator(self.translator)
+        #     # Select language
+        #     languages = ("Espanol", "English")
+        #     language, ok = QtWidgets.QInputDialog.getItem(None, "Languages", "List of languages", languages, 0, False)
+        #     if ok and (language == "English"):
+        #         self.locale_path = os.path.join(self.locale_path, 'ClasificacionRedes_ingles.qm')
+        #         self.translator.load(self.locale_path)
+        #     if language != "Espanol":
+        #         QCoreApplication.installTranslator(self.translator)
             # Start dialog
             self.dlg = ClasificacionRedesDialog()
       

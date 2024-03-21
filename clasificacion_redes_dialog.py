@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QMessageBox, QTableWidgetItem
 
 # Imports for the processing of data
 from qgis import processing
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsProviderRegistry
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer, QgsVectorLayer, QgsField, QgsRasterLayer, QgsWkbTypes
 
 # General libraries to easy QGIS Processes
@@ -50,6 +50,8 @@ from . import fuzzyclassification
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'clasificacion_redes_dialog_base.ui'))
 
+global SAGAVERSION
+
 
 class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
@@ -65,8 +67,8 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
         self.calcEnrichment.clicked.connect(self.calculateEnrichment)
         self.calcFuzzy.clicked.connect(self.calculateFuzzy)
         self.checkIndividual.clicked.connect(self.individual)
-        self.comboClassifiedWatersheds.currentIndexChanged.connect(self.fillCWFields)
-        self.checkConfidence.clicked.connect(self.confidence)
+        # self.comboClassifiedWatersheds.currentIndexChanged.connect(self.fillCWFields)
+        # self.checkConfidence.clicked.connect(self.confidence)
 
     # Refresh comboboxes
     def refreshLayers(self):
@@ -76,7 +78,7 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
         self.comboWatersheds.clear()
         self.comboJunctions.clear()
         self.comboWatershedsEn.clear()
-        self.comboClassifiedWatersheds.clear()
+        # self.comboClassifiedWatersheds.clear()
 
         # Para introducir en el comboBox todas las capas del proyecto.
         root = QgsProject.instance().layerTreeRoot()
@@ -91,7 +93,7 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
                         self.comboWatersheds.addItems([e.name()])
                         self.comboJunctions.addItems([e.name()])
                         self.comboWatershedsEn.addItems([e.name()])
-                        self.comboClassifiedWatersheds.addItems([e.name()])
+                        # self.comboClassifiedWatersheds.addItems([e.name()])
                     else:
                         # We suppose Raster Layer for DEM
                         self.comboDEM.addItems([e.name()])
@@ -101,7 +103,7 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
                     self.comboWatersheds.addItems([child.name()])
                     self.comboJunctions.addItems([child.name()])
                     self.comboWatershedsEn.addItems([child.name()])
-                    self.comboClassifiedWatersheds.addItems([child.name()])
+                    # self.comboClassifiedWatersheds.addItems([child.name()])
                 else:
                     # We suppose Raster Layer for DEM
                     self.comboDEM.addItems([child.name()])
@@ -143,15 +145,29 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
     # Functions to execute de different parts of the execution (tabs)
     # Calculate channels using SAGA Algorithms
     def calculateChannels(self):
+        global SAGAVERSION # Variable para determinar la versión de SAGA
+
         # Obtenemos los parámetros que se han pasado por medio de la interfaz.
         slope = self.doubleSpinBox.value()
         umbral = self.spinBox.value()
         #DEMIndex = self.dlg.comboBox.currentIndex()
         DEMName = self.comboDEM.currentText()
-
+        
         # Fill sinks previous to determine channels and junctions
         paramsFill = {'ELEV': DEMName, 'MINSLOPE': slope,'FILLED':'TEMPORARY_OUTPUT','FDIR':'TEMPORARY_OUTPUT','WSHED':'TEMPORARY_OUTPUT'}
-        resultsFill = processing.run('saga:fillsinkswangliu', paramsFill)
+        try:
+            # Prueba con SAGA 7
+            resultsFill = processing.run('saga:fillsinkswangliu', paramsFill)
+            SAGAVERSION = 'saga'
+        except:
+            try:
+                resultsFill = processing.run('sagang:fillsinkswangliu', paramsFill)
+                SAGAVERSION = 'sagang'
+            except:
+                print("Error, SAGA no está instalado")  
+                SAGAVERSION = None
+                return
+            
         filled_DEM = resultsFill['FILLED']
 
         # Determine channels and junctions
@@ -164,7 +180,14 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
             'SEGMENTS':'TEMPORARY_OUTPUT',
             'BASINS':'TEMPORARY_OUTPUT',
             'NODES':'TEMPORARY_OUTPUT'}
-        resultsChannels = processing.run('saga:channelnetworkanddrainagebasins', paramsChannels)
+        try:
+            resultsChannels = processing.run('saga:channelnetworkanddrainagebasins', paramsChannels)
+        except:
+            try:
+                resultsChannels = processing.run('sagang:channelnetworkanddrainagebasins', paramsChannels)
+            except:
+                print("Error, SAGA no está instalado") 
+                return
 
         # Add temporal layers to project
         QgsProject.instance().addMapLayer(QgsRasterLayer(filled_DEM, 'Filled' + DEMName))
@@ -177,6 +200,7 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
     
     # Add new attributes for enrichment
     def calculateEnrichment(self):
+        global SAGAVERSION # Variable para determinar la versión de SAGA
         # Buscamos las capas resultado del algoritmo de procesamiento anterior.
         layer_channels = QgsProject.instance().mapLayersByName(self.comboChannels.currentText())[0]
         # Test if layer has linestring
@@ -208,7 +232,7 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
             {'name':'Elongation', 'check': self.checkBoxElongacion.checkState(), 'clase': Elongacion},
             {'name':'FractalD', 'check': self.checkBoxFractal.checkState(), 'clase': Fractal}
         ]
-
+        print(listOfAttributes)
         # Test if we have to calculate something
         if not functools.reduce(lambda a, b: a or b, [i['check'] for i in listOfAttributes], False):
             QMessageBox.information(None, "Error", "No se ha seleccionado ningún atributo a enriquecer")
@@ -240,7 +264,8 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
                         res.extend([None]) # To keep the order of the attributes we insert a Null data
                     else:
                         try:
-                            clase = j['clase'](junctionsInWatershedM, channelsInWatershedM)
+                            clase = j['clase'](junctionsInWatershedM, channelsInWatershedM, SAGAVERSION)
+                            print(clase)
                             res.extend([clase.getValue()])
                         except:
                             print("Error calculando", j[clase.SEGMENT_ID])

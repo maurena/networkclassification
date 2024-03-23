@@ -31,7 +31,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 # Import the code for the dialog
 from .clasificacion_redes_dialog import ClasificacionRedesDialog
 import os.path
-from qgis.core import QgsLayerTreeGroup
+from qgis.core import QgsLayerTreeGroup, QgsProcessingContext, QgsProcessingFeedback
 
 class ClasificacionRedes:
     """QGIS Plugin Implementation."""
@@ -67,6 +67,9 @@ class ClasificacionRedes:
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
         self.first_start = None
+        # Read context and feedback
+        self.context = QgsProcessingContext()
+        self.feedback = QgsProcessingFeedback()
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -206,7 +209,7 @@ class ClasificacionRedes:
         #     if language != "Espanol":
         #         QCoreApplication.installTranslator(self.translator)
             # Start dialog
-            self.dlg = ClasificacionRedesDialog()
+            self.dlg = ClasificacionRedesDialog(self.context, self.feedback)
       
         # Fill combos with layers
         self.dlg.refreshLayers()    

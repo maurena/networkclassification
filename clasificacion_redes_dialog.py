@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QMessageBox, QTableWidgetItem
 
 # Imports for the processing of data
 from qgis import processing
-from qgis.core import QgsProject, QgsProviderRegistry
+from qgis.core import QgsProject, QgsProcessingAlgRunnerTask, QgsApplication, QgsMessageLog
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer, QgsVectorLayer, QgsField, QgsRasterLayer, QgsWkbTypes
 
 # General libraries to easy QGIS Processes
@@ -52,9 +52,56 @@ FORM_CLASS, _ = uic.loadUiType(os.path.join(
 
 global SAGAVERSION
 
+# Run a processing algorithm as a task
+def runAsATasks(saga, paramsFill, paramsChannels, context, feedback, plugin):
+    def task_finished(context, successful, results):
+        if not successful:
+            QgsMessageLog.logMessage('Task finished unsucessfully','AlgRunnerTask', 1) # Qgis.Warning
+        output_layer = context.getMapLayer(results['OUTPUT'])
+        # because getMapLayer doesn't transfer ownership, the layer will
+        # be deleted when context goes out of scope and you'll get a
+        # crash.
+        # takeMapLayer transfers ownership so it's then safe to add it
+        # to the project and give the project ownership.
+        if output_layer and output_layer.isValid():
+            QgsProject.instance().addMapLayer(context.takeResultLayer(output_layer.id()))
+            # Sent to the other task
+            paramsChannels['DEM'] = output_layer.id
+            # Refresh combos to include new calculated layers
+            plugin.refreshLayers()
+            runAsATaskChannels(saga, paramsChannels,context, feedback, plugin)
+    alg =  QgsApplication.processingRegistry().algorithmById(saga + saga +':fillsinkswangliu')
+    task = QgsProcessingAlgRunnerTask(alg, paramsFill, context, feedback)
+    task.executed.connect(functools.partial(task_finished, context))
+    QgsApplication.taskManager().addTask(task)
+
+def runAsATaskChannels(saga, params, context, feedback, plugin):
+    def task_finished(context, successful, results):
+        if not successful:
+            QgsMessageLog.logMessage('Task finished unsucessfully','AlgRunnerTask', 1) # Qgis.Warning
+        output_channels = context.getMapLayer(results['SEGMENTS'])
+        output_nodes = context.getMapLayer(results['NODES'])
+        output_basins = context.getMapLayer(results['BASINS'])
+        # because getMapLayer doesn't transfer ownership, the layer will
+        # be deleted when context goes out of scope and you'll get a
+        # crash.
+        # takeMapLayer transfers ownership so it's then safe to add it
+        # to the project and give the project ownership.
+        if output_channels and output_channels.isValid():
+            QgsProject.instance().addMapLayer(context.takeResultLayer(output_channels.id()))
+        if output_nodes and output_nodes.isValid():
+            QgsProject.instance().addMapLayer(context.takeResultLayer(output_nodes.id()))
+        if output_basins and output_basins.isValid():
+            QgsProject.instance().addMapLayer(context.takeResultLayer(output_basins.id()))
+        # Refresh combos to include new calculated layers
+        plugin.refreshLayers()
+    alg =  QgsApplication.processingRegistry().algorithmById(saga + ':channelnetworkanddrainagebasins')
+    task = QgsProcessingAlgRunnerTask(alg, params, context, feedback)
+    task.executed.connect(functools.partial(task_finished, context))
+    QgsApplication.taskManager().addTask(task)
 
 class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
-    def __init__(self, parent=None):
+    def __init__(self, context, feedback, parent=None):
         """Constructor."""
         super(ClasificacionRedesDialog, self).__init__(parent)
         # Set up the user interface from Designer through FORM_CLASS.
@@ -69,6 +116,10 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
         self.checkIndividual.clicked.connect(self.individual)
         # self.comboClassifiedWatersheds.currentIndexChanged.connect(self.fillCWFields)
         # self.checkConfidence.clicked.connect(self.confidence)
+
+        # Contextos
+        self.context = context
+        self.feedback = feedback
 
     # Refresh comboboxes
     def refreshLayers(self):
@@ -141,7 +192,7 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
             it_4.setCheckState(Qt.Unchecked)
             self.fieldsCWUsed.setItem(j, 2, it_4)
             #self.fieldsCWUsed.setItem(j, 1, QTableWidgetItem(False, QVariant.Bool))
-                
+
     # Functions to execute de different parts of the execution (tabs)
     # Calculate channels using SAGA Algorithms
     def calculateChannels(self):
@@ -153,26 +204,14 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
         #DEMIndex = self.dlg.comboBox.currentIndex()
         DEMName = self.comboDEM.currentText()
         
+        # Create both params
         # Fill sinks previous to determine channels and junctions
         paramsFill = {'ELEV': DEMName, 'MINSLOPE': slope,'FILLED':'TEMPORARY_OUTPUT','FDIR':'TEMPORARY_OUTPUT','WSHED':'TEMPORARY_OUTPUT'}
-        try:
-            # Prueba con SAGA 7
-            resultsFill = processing.run('saga:fillsinkswangliu', paramsFill)
-            SAGAVERSION = 'saga'
-        except:
-            try:
-                resultsFill = processing.run('sagang:fillsinkswangliu', paramsFill)
-                SAGAVERSION = 'sagang'
-            except:
-                print("Error, SAGA no está instalado")  
-                SAGAVERSION = None
-                return
-            
-        filled_DEM = resultsFill['FILLED']
-
         # Determine channels and junctions
         # Layers are inserted into the project by default
-        paramsChannels = {'DEM': filled_DEM, 'THRESHOLD': umbral, 
+        paramsChannels = {
+            'DEM': '', #filled_DEM, 
+            'THRESHOLD': umbral, 
             'DIRECTION':'TEMPORARY_OUTPUT',
             'CONNECTION':'TEMPORARY_OUTPUT',
             'ORDER':'TEMPORARY_OUTPUT',
@@ -180,23 +219,46 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
             'SEGMENTS':'TEMPORARY_OUTPUT',
             'BASINS':'TEMPORARY_OUTPUT',
             'NODES':'TEMPORARY_OUTPUT'}
+        
+        # Execute the task
         try:
-            resultsChannels = processing.run('saga:channelnetworkanddrainagebasins', paramsChannels)
+            # Prueba con SAGA 7
+            runAsATasks('saga', paramsFill, paramsChannels, self.context, self.feedback, self)
+            # resultsFill = processing.run('saga:'fillsinkswangliu', paramsFill)
+            SAGAVERSION = 'saga'
         except:
             try:
-                resultsChannels = processing.run('sagang:channelnetworkanddrainagebasins', paramsChannels)
-            except:
-                print("Error, SAGA no está instalado") 
+                runAsATasks('sagang', paramsFill, paramsChannels, self.context, self.feedback, self)
+                # runAsATask('sagang:fillsinkswangliu', context, feedback)
+                # resultsFill = processing.run('sagang:fillsinkswangliu', paramsFill)
+                SAGAVERSION = 'sagang'
+            except Exception as error:
+                QgsMessageLog.logMessage("Error, SAGA no está instalado" + str(error),'AlgRunnerTask', 1)  
+                SAGAVERSION = None
                 return
+            
+        # filled_DEM = resultsFill['FILLED']
 
-        # Add temporal layers to project
-        QgsProject.instance().addMapLayer(QgsRasterLayer(filled_DEM, 'Filled' + DEMName))
-        QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['SEGMENTS'], 'Channels' + DEMName))
-        QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['NODES'], 'Junctions' + DEMName))
-        QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['BASINS'], 'Basins' + DEMName)) # Basins is the vector layer and Basin is the raster layer
+        
+        # try:
+        #     runAsATask('saga:channelnetworkanddrainagebasins', paramsChannels, context, feedback)
+        #     # resultsChannels = processing.run('saga:channelnetworkanddrainagebasins', paramsChannels)
+        # except:
+        #     try:
+        #         runAsATask('sagang:channelnetworkanddrainagebasins', paramsChannels, context, feedback)
+        #         # resultsChannels = processing.run('sagang:channelnetworkanddrainagebasins', paramsChannels)
+        #     except:
+        #         print("Error, SAGA no está instalado") 
+        #         return
+
+        # # Add temporal layers to project
+        # QgsProject.instance().addMapLayer(QgsRasterLayer(filled_DEM, 'Filled' + DEMName))
+        # QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['SEGMENTS'], 'Channels' + DEMName))
+        # QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['NODES'], 'Junctions' + DEMName))
+        # QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['BASINS'], 'Basins' + DEMName)) # Basins is the vector layer and Basin is the raster layer
 
         # Refresh combos to include new calculated layers
-        self.refreshLayers()
+        # self.refreshLayers()
     
     # Add new attributes for enrichment
     def calculateEnrichment(self):
@@ -265,10 +327,13 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
                     else:
                         try:
                             clase = j['clase'](junctionsInWatershedM, channelsInWatershedM, SAGAVERSION)
-                            print(clase)
+                            print(j['clase'], clase)
                             res.extend([clase.getValue()])
                         except:
-                            print("Error calculando", j[clase.SEGMENT_ID])
+                            try:
+                                print("Error calculando", j[clase.SEGMENT_ID])
+                            except:
+                                print("No se pudo crear la clase", j['clase'])
 
             # Insert new geometry
             attrs = i.attributes()

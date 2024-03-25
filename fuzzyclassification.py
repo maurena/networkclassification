@@ -1,5 +1,8 @@
 import numpy as np
 from functools import reduce
+from qgis.core import Qgis, QgsMessageLog
+from PyQt5.Qt import QVariant
+
 # try:
 #     # Import external versión of skfuzzy
 #     import skfuzzy as fuzz
@@ -90,6 +93,7 @@ class fuzzyclass:
     def clasificacionBorrosa(self):
         # Establecemos las funciones de membresía para cada uno de los términos
         # de los conjuntos difusos y para las salidas.
+        
         alfa_very_acute = membership.zmf(self.universo_alfa, self.a_VERY_ACUTE, self.b_VERY_ACUTE)
         alfa_acute = membership.zmf(self.universo_alfa, self.a_ACUTE, self.b_ACUTE)
         alfa_right = membership.gaussmf(self.universo_alfa, self.media_RIGHT, self.sigma_RIGHT)
@@ -147,26 +151,38 @@ class fuzzyclass:
         # Fase de agregación. Con una función max, obtenemos un conjunto difuso resultado de agregar los
         # conjuntos obtenidos de la anterior fase.
         aggregationMax = max(maxactivation, key=maxactivation.get)
+        
+        # Fase de agregación. Con una función max, obtenemos un conjunto difuso resultado de agregar los
+        # conjuntos obtenidos de la anterior fase.
+        
+        aggregation = activation['dendritic']
+        for i in activation:
+            if activation is not None:
+                aggregation = np.fmax(aggregation, activation[i])
+        # aggregation = reduce(lambda a, b: np.fmax(a, b) if a is not None and b is not None else a if b is not None else b if a is not None else 0, activation, activation['dendritic'])
+        # Defuzzification
+        pattern_centroid = defuzz(self.universo_output, aggregation, 'centroid')
+        pattern_bisector = defuzz(self.universo_output, aggregation, 'bisector')
+        pattern_mom = defuzz(self.universo_output, aggregation, "mom")
+        pattern_som = defuzz(self.universo_output, aggregation, "som")
+        pattern_lom = defuzz(self.universo_output, aggregation, "lom")
 
-        if self.debug:
-            # Fase de agregación. Con una función max, obtenemos un conjunto difuso resultado de agregar los
-            # conjuntos obtenidos de la anterior fase.
-            aggregation = reduce(lambda a, b: np.fmax(a, b), activation, activation['dendritic'])
-            # Defuzzification
-            pattern_centroid = defuzz(self.universo_output, aggregation, 'centroid')
-            pattern_bisector = defuzz(self.universo_output, aggregation, 'bisector')
-            pattern_mom = defuzz(self.universo_output, aggregation, "mom")
-            pattern_som = defuzz(self.universo_output, aggregation, "som")
-            pattern_lom = defuzz(self.universo_output, aggregation, "lom")
-
-            # Print results
-            print(pattern_centroid)
-            print(pattern_bisector)
-            print(pattern_mom)
-            print(pattern_som)
-            print(pattern_lom)
         # Remember to convert maxactivation to base float type of Python (actually is a numpy type)
+        if self.debug:
+            # Print results
+            QgsMessageLog.logMessage(message=str(pattern_centroid), level=Qgis.Info)
+            QgsMessageLog.logMessage(message=str(pattern_bisector), level=Qgis.Info)
+            QgsMessageLog.logMessage(message=str(pattern_mom), level=Qgis.Info)
+            QgsMessageLog.logMessage(message=str(pattern_som), level=Qgis.Info)
+            QgsMessageLog.logMessage(message=str(pattern_lom), level=Qgis.Info)
+            for (k,v) in maxactivation.items():
+                QgsMessageLog.logMessage(
+                    message=str(k) + ':' + str(v),
+                    level=Qgis.Info
+                )
+
         return [aggregationMax, {k: float(v) for (k,v) in maxactivation.items()}]
+
         
 # Test
 if __name__ == "__main__":

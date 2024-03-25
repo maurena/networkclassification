@@ -1,6 +1,7 @@
 
 import math as m
 from .base import baseEnrichment
+from qgis.core import Qgis, QgsMessageLog
 
 class Angularidad(baseEnrichment):
     def __init__(self, junctions, channels, saga, debug=False):
@@ -50,23 +51,37 @@ class Angularidad(baseEnrichment):
                 #ellos tal y como se indica en el paper.
                 if(len(puntos_segments) == 2):
                     if self.debug:
-                        print("INTERSECCIÓN DE 2 SEGMENTOS")
-                        print("ID Nodo Junction: " + str(p1[self.NODE_ID]))
+                        QgsMessageLog.logMessage(
+                            message="INTERSECCIÓN DE 2 SEGMENTOS",
+                            level=Qgis.Info
+                        )
+                        QgsMessageLog.logMessage(
+                            message=f"ID Nodo Junction: %s" % (str(p1[self.NODE_ID])),
+                            level=Qgis.Info
+                        )
                         for j in puntos_segments:
-                            print("ID Nodo: " + str(j[0][self.NODE_ID]))
+                            QgsMessageLog.logMessage(
+                                message=f"ID Nodo: %s" % (str(j[0][self.NODE_ID])),
+                                level=Qgis.Info
+                            )
                     a = p1.geometry().asPoint().distance(puntos_segments[0][0].geometry().asPoint())
                     b = p1.geometry().asPoint().distance(puntos_segments[1][0].geometry().asPoint())
                     c = puntos_segments[1][0].geometry().asPoint().distance(puntos_segments[0][0].geometry().asPoint())
                     angulo = m.acos((m.pow(a, 2) + m.pow(b, 2) - m.pow(c, 2)) / (2 * a * b))
                     if self.debug:
-                        print("Angulo: " + str(m.degrees(angulo)))
-                        print("")
+                        QgsMessageLog.logMessage(
+                            message=f"Angulo: " + str(m.degrees(angulo)),
+                            level=Qgis.Info
+                        )
                     Angulos.append(angulo)
             
                 #Si hay más, comprobamos los otros casos.
                 elif(len(puntos_segments) > 2):
                     if self.debug:
-                        print("INTERSECCIÓN DE MÁS DE 2 SEGMENTOS")
+                        QgsMessageLog.logMessage(
+                            message=f"INTERSECCIÓN DE MÁS DE 2 SEGMENTOS",
+                            level=Qgis.Info
+                        )
                     #Ordenamos el vector de nodos y segmentos según el orden de Strahler.
                     puntos_segments.sort(reverse=True, key=self.sortCriteria)
                     #Si hay un único segmento con el mayor orden, calculamos los ángulos
@@ -78,7 +93,10 @@ class Angularidad(baseEnrichment):
                             if(p3[self.NODE_ID] != p2[self.NODE_ID]):
                                 angulo = self._calculateTriangle(p1, p2, p3)
                                 if self.debug:
-                                    print(str(m.degrees(angulo)))
+                                    QgsMessageLog.logMessage(
+                                        message=str(m.degrees(angulo)),
+                                        level=Qgis.Info
+                                    )
                                 Angulos.append(angulo)
                     #Si hay varios segmentos con el mismo orden máximo, se calcula el
                     #segmento principal.
@@ -100,7 +118,10 @@ class Angularidad(baseEnrichment):
                                 if(p3[self.NODE_ID] != p2[self.NODE_ID]):
                                     angulo = self._calculateTriangle(p1, p2, p3)
                                     if self.debug:
-                                        print(str(m.degrees(angulo)))
+                                        QgsMessageLog.logMessage(
+                                            message=str(m.degrees(angulo)),
+                                            level=Qgis.Info
+                                        )
                                     Angulos.append(angulo)
         # Devolvemos angularidad
         if len(Angulos) == 0:

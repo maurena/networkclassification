@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QMessageBox, QTableWidgetItem
 
 # Imports for the processing of data
 from qgis import processing
-from qgis.core import QgsProject, QgsProcessingAlgRunnerTask, QgsApplication, QgsMessageLog
+from qgis.core import QgsProject, QgsProcessingAlgRunnerTask, QgsApplication, QgsMessageLog, Qgis
 from qgis.core import QgsLayerTreeGroup, QgsLayerTreeLayer, QgsVectorLayer, QgsField, QgsRasterLayer, QgsWkbTypes
 
 # General libraries to easy QGIS Processes
@@ -116,6 +116,18 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
         self.checkIndividual.clicked.connect(self.individual)
         # self.comboClassifiedWatersheds.currentIndexChanged.connect(self.fillCWFields)
         # self.checkConfidence.clicked.connect(self.confidence)
+
+        # Determinación de la versión de saga
+        global SAGAVERSION
+        id = QgsApplication.processingRegistry().algorithmById('saga:fillsinkswangliu')
+        if not id is None:
+            SAGAVERSION='saga'
+        else:
+            id2 = QgsApplication.processingRegistry().algorithmById('sagang:fillsinkswangliu')
+            if not id2 is None:
+                SAGAVERSION='sagang'
+            else:
+                SAGAVERSION=None
 
         # Contextos
         self.context = context
@@ -205,60 +217,56 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
         DEMName = self.comboDEM.currentText()
         
         # Create both params
-        # Fill sinks previous to determine channels and junctions
-        paramsFill = {'ELEV': DEMName, 'MINSLOPE': slope,'FILLED':'TEMPORARY_OUTPUT','FDIR':'TEMPORARY_OUTPUT','WSHED':'TEMPORARY_OUTPUT'}
-        # Determine channels and junctions
-        # Layers are inserted into the project by default
-        paramsChannels = {
-            'DEM': '', #filled_DEM, 
-            'THRESHOLD': umbral, 
-            'DIRECTION':'TEMPORARY_OUTPUT',
-            'CONNECTION':'TEMPORARY_OUTPUT',
-            'ORDER':'TEMPORARY_OUTPUT',
-            'BASIN':'TEMPORARY_OUTPUT',
-            'SEGMENTS':'TEMPORARY_OUTPUT',
-            'BASINS':'TEMPORARY_OUTPUT',
-            'NODES':'TEMPORARY_OUTPUT'}
+        if SAGAVERSION is None:
+            return
         
-        # Execute the task
-        try:
-            # Prueba con SAGA 7
-            runAsATasks('saga', paramsFill, paramsChannels, self.context, self.feedback, self)
-            # resultsFill = processing.run('saga:'fillsinkswangliu', paramsFill)
-            SAGAVERSION = 'saga'
-        except:
-            try:
-                runAsATasks('sagang', paramsFill, paramsChannels, self.context, self.feedback, self)
-                # runAsATask('sagang:fillsinkswangliu', context, feedback)
-                # resultsFill = processing.run('sagang:fillsinkswangliu', paramsFill)
-                SAGAVERSION = 'sagang'
-            except Exception as error:
-                QgsMessageLog.logMessage("Error, SAGA no está instalado" + str(error),'AlgRunnerTask', 1)  
-                SAGAVERSION = None
-                return
-            
-        # filled_DEM = resultsFill['FILLED']
-
-        
-        # try:
-        #     runAsATask('saga:channelnetworkanddrainagebasins', paramsChannels, context, feedback)
-        #     # resultsChannels = processing.run('saga:channelnetworkanddrainagebasins', paramsChannels)
-        # except:
-        #     try:
-        #         runAsATask('sagang:channelnetworkanddrainagebasins', paramsChannels, context, feedback)
-        #         # resultsChannels = processing.run('sagang:channelnetworkanddrainagebasins', paramsChannels)
-        #     except:
-        #         print("Error, SAGA no está instalado") 
-        #         return
-
-        # # Add temporal layers to project
-        # QgsProject.instance().addMapLayer(QgsRasterLayer(filled_DEM, 'Filled' + DEMName))
-        # QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['SEGMENTS'], 'Channels' + DEMName))
-        # QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['NODES'], 'Junctions' + DEMName))
-        # QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['BASINS'], 'Basins' + DEMName)) # Basins is the vector layer and Basin is the raster layer
+        if SAGAVERSION == 'saga':
+            # Fill sinks previous to determine channels and junctions
+            paramsFill = {'ELEV': DEMName, 'MINSLOPE': slope,'FILLED':'TEMPORARY_OUTPUT','FDIR':'TEMPORARY_OUTPUT','WSHED':'TEMPORARY_OUTPUT'}
+            resultsFill = processing.run('saga:fillsinkswangliu', paramsFill)
+            filled_DEM = resultsFill['FILLED']
+            # Determine channels and junctions
+            # Layers are inserted into the project by default
+            paramsChannels = {
+                'DEM': filled_DEM, #filled_DEM, 
+                'THRESHOLD': umbral, 
+                'DIRECTION':'TEMPORARY_OUTPUT',
+                'CONNECTION':'TEMPORARY_OUTPUT',
+                'ORDER':'TEMPORARY_OUTPUT',
+                'BASIN':'TEMPORARY_OUTPUT',
+                'SEGMENTS':'TEMPORARY_OUTPUT',
+                'BASINS':'TEMPORARY_OUTPUT',
+                'NODES':'TEMPORARY_OUTPUT'}
+            resultsChannels = processing.run('saga:channelnetworkanddrainagebasins', paramsChannels)
+            # Add temporal layers to project
+            QgsProject.instance().addMapLayer(QgsRasterLayer(filled_DEM, 'Filled' + DEMName))
+            QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['BASINS'], 'Basins' + DEMName)) # Basins is the vector layer and Basin is the raster layer
+            QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['SEGMENTS'], 'Channels' + DEMName))
+            QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['NODES'], 'Junctions' + DEMName))
+        else:
+            paramsFill = {'ELEV': DEMName, 'MINSLOPE': slope,'FILLED':'TEMPORARY_OUTPUT','FDIR':'TEMPORARY_OUTPUT','WSHED':'TEMPORARY_OUTPUT'}
+            resultsFill = processing.run('sagang:fillsinkswangliu', paramsFill)
+            filled_DEM = resultsFill['FILLED']
+            paramsChannels = {
+                'DEM': filled_DEM,
+                'THRESHOLD': umbral,
+                'DIRECTION':'TEMPORARY_OUTPUT',
+                'CONNECTION':'TEMPORARY_OUTPUT',
+                'ORDER':'TEMPORARY_OUTPUT',
+                'BASIN':'TEMPORARY_OUTPUT',
+                'SEGMENTS':'TEMPORARY_OUTPUT',
+                'BASINS':'TEMPORARY_OUTPUT',
+                'NODES':'TEMPORARY_OUTPUT',
+                'SUBBASINS':False}
+            resultsChannels = processing.run('sagang:channelnetworkanddrainagebasins', paramsChannels)
+            # Add temporal layers to project
+            QgsProject.instance().addMapLayer(QgsRasterLayer(filled_DEM, 'Filled' + DEMName))
+            QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['BASINS'], 'Basins' + DEMName)) # Basins is the vector layer and Basin is the raster layer
+            QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['SEGMENTS'], 'Channels' + DEMName))
+            QgsProject.instance().addMapLayer(QgsVectorLayer(resultsChannels['NODES'], 'Junctions' + DEMName))
 
         # Refresh combos to include new calculated layers
-        # self.refreshLayers()
+        self.refreshLayers()
     
     # Add new attributes for enrichment
     def calculateEnrichment(self):
@@ -294,7 +302,7 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
             {'name':'Elongation', 'check': self.checkBoxElongacion.checkState(), 'clase': Elongacion},
             {'name':'FractalD', 'check': self.checkBoxFractal.checkState(), 'clase': Fractal}
         ]
-        print(listOfAttributes)
+        
         # Test if we have to calculate something
         if not functools.reduce(lambda a, b: a or b, [i['check'] for i in listOfAttributes], False):
             QMessageBox.information(None, "Error", "No se ha seleccionado ningún atributo a enriquecer")
@@ -323,17 +331,27 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
                 if (j['check'] == Qt.CheckState.Checked):
                     # Test if we have defined the class to calculate de enrichment and
                     if (j['clase'] is None):
-                        res.extend([None]) # To keep the order of the attributes we insert a Null data
+                        res.extend([0]) # To keep the order of the attributes we insert a Null data
                     else:
                         try:
                             clase = j['clase'](junctionsInWatershedM, channelsInWatershedM, SAGAVERSION)
-                            print(j['clase'], clase)
+                            QgsMessageLog.logMessage(
+                                message=str(j['clase'])+str(clase),
+                                level=Qgis.Info
+                            )
                             res.extend([clase.getValue()])
                         except:
+                            res.extend([0])
                             try:
-                                print("Error calculando", j[clase.SEGMENT_ID])
+                                QgsMessageLog.logMessage(
+                                    message="Error calculando" + str(j[clase.SEGMENT_ID]),
+                                    level=Qgis.Info
+                                )
                             except:
-                                print("No se pudo crear la clase", j['clase'])
+                                QgsMessageLog.logMessage(
+                                    message="No se pudo crear la clase" + str(j['clase']),
+                                    level=Qgis.Info
+                                )
 
             # Insert new geometry
             attrs = i.attributes()
@@ -369,9 +387,12 @@ class ClasificacionRedesDialog(QtWidgets.QDialog, FORM_CLASS):
         # Iterate over all entities
         for i in layer_watersheds.getFeatures():
             # Create class to fuzzy classification
-            fuzzy = fuzzyclassification.fuzzyclass(i['Angularity'], i['Sinuosity'], i['RatioLength'], i['Elongation'])
-            # Calculate and insert entity
             attr=i.attributes()
+            # if not i['Angularity'] or not i['Sinuosity'] or not i['RatioLength'] or not i['Elongation']:
+            #     attr.extend(['Undetermined', 0, 0, 0, 0])
+            # else:
+            # Calculate and insert entity
+            fuzzy = fuzzyclassification.fuzzyclass(i['Angularity'], i['Sinuosity'], i['RatioLength'], i['Elongation'])
             res = fuzzy.clasificacionBorrosa()
             attr.extend([res[0], res[1]['dendritic'], res[1]['parallel'], res[1]['trellis'], res[1]['rectangular']])
             utils.addFeature(temp, i.geometry(), attr)

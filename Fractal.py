@@ -3,6 +3,7 @@ import math
 from .base import baseEnrichment
 import processing
 from qgis.core import QgsRectangle, QgsPointXY
+from qgis.core import Qgis, QgsMessageLog
 
 # We estimated fractal dimensions following the formula of cubes indicated in:
 # "A Fractal Description of Fluvial Networks in Chile: a Geography not as Crazy as Thought"

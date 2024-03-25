@@ -1,5 +1,6 @@
 import math as m
 from .base import baseEnrichment
+from qgis.core import Qgis, QgsTask, QgsMessageLog
 
 class RatioLongitud(baseEnrichment):
     def __init__(self, junctions, channels, saga, debug=False):
@@ -70,7 +71,11 @@ class RatioLongitud(baseEnrichment):
         #Puesto que nuestra cuenca puede tener varios canales inconexos, mostramos
         #por pantalla los ratios de cada canal inconexo.
         if self.debug:
-            map(lambda i: print("RATIO: " + i), ratios)
+            for i in ratios:
+                QgsMessageLog.logMessage(
+                    message="RATIO: " + str(i),
+                    level=Qgis.Info
+                )
 
         #return outlets, ratios
         if len(ratios) == 0:

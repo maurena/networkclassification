@@ -2,6 +2,7 @@
 import math as m
 from .base import baseEnrichment
 from qgis.core import QgsGeometry
+from qgis.core import Qgis, QgsMessageLog
 
 class Elongacion(baseEnrichment):
     def __init__(self, junctions, channels, saga, debug=False):
@@ -11,6 +12,7 @@ class Elongacion(baseEnrichment):
         #dos ángulos a la hora de calcula la dirección de flujo para que consideremos
         #a la longitud del stream en vez de a dicha dirección.
         self.LIMITE_ANGULOS = 3
+        self.value = 0 # Valor por defecto
     
     #Función que nos devuelve la orientación de una recta dados dos puntos.
     def _orientacion(self, puntoA, puntoB):
@@ -44,7 +46,10 @@ class Elongacion(baseEnrichment):
             network = self._calculateConnectedNetwork(outlet[self.NODE_ID])
             if len(network['network']) == 0:
                 # No network determined
-                print ('No network from', outlet[self.NODE_ID])
+                QgsMessageLog.logMessage(
+                    message=f'No network from %s' %(str(outlet[self.NODE_ID])),
+                    level=Qgis.Info
+                )
                 continue
 
             # Create a Geometry Collection to determine Minimum Oriented Bounding Box
@@ -93,12 +98,12 @@ class Elongacion(baseEnrichment):
                 else:
                     elongaciones.append(d2 / d1)
                 if self.debug:
-                    print("RATIO (Outlet: " + str(outlet[self.NODE_ID]) + "): " + str(elongaciones[-1]))
+                    QgsMessageLog.logMessage(
+                        message="RATIO (Outlet: " + str(outlet[self.NODE_ID]) + "): " + str(elongaciones[-1]),
+                        level=Qgis.Info
+                    )
                
         # Return the mean of the ratios of all outlets inside watershed (if there are more than one)
-        if len(elongaciones) == 0:
-            self.value = 0
-            return True
-        else:
+        if len(elongaciones) != 0:
             self.value = 0 if len(elongaciones) == 0 else sum(elongaciones) / len(elongaciones)
-            return True
+        return True

@@ -24,7 +24,6 @@ class baseEnrichment(QgsTask):
         else:
             self.NODE_ID = "ID"
 
-        print(self.NODE_ID)
         #Nodo from del stream
         self.NODE_A = "NODE_A"
         #Nodo to del stream
@@ -124,7 +123,10 @@ class baseEnrichment(QgsTask):
             try:
                 angulos.append({'angulo':angulo, 'dif': abs(180 - angulo), 'long': i[1][self.LENGTH], 'feature': i})
             except:
-                print(mayores)
+                QgsMessageLog.logMessage(
+                    message=f"Angulos: %s" % mayores,
+                    level=Qgis.Info,
+                )
                 return None # Error
         # Filter by min angle
         anguloMin = min([i['angulo'] for i in angulos])
@@ -181,9 +183,10 @@ class baseEnrichment(QgsTask):
         if network is None:
             network = self._calculateConnectedNetwork(outlet)
         if self.debug:
-            print("Outlet:", outlet)
-            print("Springs:", ";".join(map(str, network['springs'])))
-            print("Segments:", ";".join([str(i[self.SEGMENT_ID]) for i in network['network']]))
+            QgsMessageLog.logMessage(
+                message=f"Outlet: %s\nSprings: %s\nSegments: %s" % (outlet, ";".join(map(str, network['springs'])), ";".join([str(i[self.SEGMENT_ID]) for i in network['network']])),
+                level=Qgis.Info,
+            )
         # Test if there is network
         if len(network['springs']) == 0:
             return {'outlet': outlet, 'networks': [], 'springs': []}
@@ -204,7 +207,10 @@ class baseEnrichment(QgsTask):
         while len(unordered_network) > 0:
             # Print out info
             if self.debug:
-                print("progress: [%d / %d / %d]"%(len(unordered_network),len(inprogress), len(ordered_network)))
+                QgsMessageLog.logMessage(
+                    message=f"progress: [%d / %d / %d]"%(len(unordered_network),len(inprogress), len(ordered_network)),
+                    level=Qgis.Info
+                )
             # Extract a channel
             test_path = inprogress.pop(0)
             nodes = self._getNodesFromSegments(test_path)
@@ -231,7 +237,10 @@ class baseEnrichment(QgsTask):
         # Print out info
         if self.debug:
             for i in ordered_network:
-                print('Ordered network:', ";".join([str(j[self.SEGMENT_ID]) for j in i]))
+                QgsMessageLog.logMessage(
+                    message=f'Ordered network: %s' %(";".join([str(j[self.SEGMENT_ID]) for j in i])),
+                    level=Qgis.Info
+                )
         # Obtain springs
         springs = []
         for i in ordered_network:
@@ -257,7 +266,7 @@ class baseEnrichment(QgsTask):
         if self.isCanceled():
             # if it was canceled by the user
             QgsMessageLog.logMessage(
-                message=f"Canceled angularity task.",
+                message=f"Canceled task.",
                 level=Qgis.Warning,
             )
             return
@@ -265,7 +274,7 @@ class baseEnrichment(QgsTask):
             # if there was an error
             QMessageBox.critical(
                 iface.mainWindow(),
-                "Angularity computation error",
+                "Computation error",
             )
             return
 

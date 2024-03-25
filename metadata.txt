@@ -8,12 +8,12 @@ name=Clasificación de redes hídricas
 qgisMinimumVersion=3.0
 description=Este plugin clasifica las redes hídricas por medio de una etapa de enriquecimiento y otra de lógica difusa. Advertencia: Versión experimental, algunos procesos pueden ser largos de aplicar.
 version=0.1
-author=Ramón Cruz Blanco / Manuel A. Ureña Cámara
-email=rcb00029@red.ujaen.es / maurena@ujaen.es
+author=Ramón Cruz Blanco and Manuel A. Ureña Cámara
+email=rcb00029@red.ujaen.es or maurena@ujaen.es
 
-about=Este plugin clasifica las redes hídricas por medio de una etapa de enriquecimiento y otra de lógica difusa.
+about=Este plugin clasifica las redes hídricas por medio de una etapa de enriquecimiento y otra de lógica difusa. Utiliza la librería sklearn.
 
-tracker=http://bugs
+tracker=https://coello.ujaen.es/investigacion/web_giic/funquality4dem/hnc/index.html#C6
 repository=https://github.com/maurena/networkclassification
 # End of mandatory metadata
 
